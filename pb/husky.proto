@@ -1,0 +1,21 @@
+package pb;
+
+//包头
+message Header{
+    required string messageId = 1; //消息编号
+    required string messageType = 2; //消息类型
+    optional int64 createTime  = 3; //消息生成时间
+}
+
+//byte类消息
+message BytesMessage{
+    required Header  header= 1;
+    required bytes body = 2;    
+}
+
+
+//string类型的message
+message StringMessage{
+    required Header header = 1;
+    required string body = 2;
+}
