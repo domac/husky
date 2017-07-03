@@ -1,14 +1,14 @@
 package pb
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/domac/husky/log"
+	"github.com/golang/protobuf/proto"
 )
 
 const (
 	//message
-	CMD_BYTES_MESSAGE  = uint8(0x01)
-	CMD_STRING_MESSAGE = uint8(0x02)
+	PB_BYTES_MESSAGE  = uint8(0x01)
+	PB_STRING_MESSAGE = uint8(0x02)
 )
 
 func UnmarshalPbMessage(data []byte, msg proto.Message) error {
@@ -33,7 +33,7 @@ func MarshalPbMessage(message proto.Message) ([]byte, error) {
 
 func MarshalMessage(header *Header, msgType uint8, body interface{}) []byte {
 	switch msgType {
-	case CMD_BYTES_MESSAGE:
+	case PB_BYTES_MESSAGE:
 		message := &BytesMessage{}
 		message.Header = header
 		message.Body = body.([]byte)
@@ -43,7 +43,7 @@ func MarshalMessage(header *Header, msgType uint8, body interface{}) []byte {
 			log.GetLogger().Errorf("Marshall Bytes Message Error |%s|%d|%s\n", header, msgType, err)
 		}
 		return data
-	case CMD_STRING_MESSAGE:
+	case PB_STRING_MESSAGE:
 		message := &StringMessage{}
 		message.Header = header
 		message.Body = proto.String(body.(string))

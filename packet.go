@@ -3,8 +3,8 @@ package husky
 import (
 	"bytes"
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"github.com/domac/husky/pb"
+	"github.com/golang/protobuf/proto"
 	"time"
 )
 
@@ -43,9 +43,9 @@ func NewPbBytesPacket(packetId int32, messageType string, data []byte) *Packet {
 		MessageType: proto.String(messageType),
 		CreateTime:  proto.Int64(time.Now().Unix())}
 
-	dataBytes := pb.MarshalMessage(header, pb.CMD_BYTES_MESSAGE, data)
+	dataBytes := pb.MarshalMessage(header, pb.PB_BYTES_MESSAGE, data)
 
-	p := NewCmdPacket(packetId, pb.CMD_BYTES_MESSAGE, dataBytes)
+	p := NewCmdPacket(packetId, pb.PB_BYTES_MESSAGE, dataBytes)
 	p.Header.PacketId = packetId
 	return p
 }
@@ -56,9 +56,9 @@ func NewPbStringPacket(packetId int32, messageType string, data string) *Packet 
 		MessageType: proto.String(messageType),
 		CreateTime:  proto.Int64(time.Now().Unix())}
 
-	dataBytes := pb.MarshalMessage(header, pb.CMD_STRING_MESSAGE, data)
+	dataBytes := pb.MarshalMessage(header, pb.PB_STRING_MESSAGE, data)
 
-	p := NewCmdPacket(packetId, pb.CMD_STRING_MESSAGE, dataBytes)
+	p := NewCmdPacket(packetId, pb.PB_STRING_MESSAGE, dataBytes)
 	p.Header.PacketId = packetId
 	return p
 }

@@ -12,7 +12,7 @@ func main() {
 
 	simpleServer := NewServer("localhost:10028", nil, func(remoteClient *HuskyClient, p *Packet) {
 
-		if p.Header.ContentType == pb.CMD_BYTES_MESSAGE {
+		if p.Header.ContentType == pb.PB_BYTES_MESSAGE {
 			bm := &pb.BytesMessage{}
 			pb.UnmarshalPbMessage(p.Data, bm)
 
