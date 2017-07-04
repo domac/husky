@@ -16,7 +16,7 @@ type HuskyServer struct {
 	StopChan              chan bool
 	packetReceiveCallBack CallBackFunc
 	rc                    *HuskyConfig
-	listener              *ServerListener
+	listener              *HuskyServerListener
 }
 
 func NewServer(hostport string, hc *HuskyConfig, callback CallBackFunc) *HuskyServer {
@@ -40,7 +40,7 @@ func (self *HuskyServer) ListenAndServer() error {
 
 	addr, err := net.ResolveTCPAddr("tcp4", self.hostport)
 	if nil != err {
-		log.GetLogger().Fatalf("Server resolveTCPAddr fail %s\n", err)
+		log.GetLogger().Fatalf("server resolve tcp addr fail %s\n", err)
 		return err
 	}
 
@@ -50,7 +50,7 @@ func (self *HuskyServer) ListenAndServer() error {
 		return err
 	}
 
-	sl := &ServerListener{listener, self.StopChan, self.keepalive}
+	sl := &HuskyServerListener{listener, self.StopChan, self.keepalive}
 	self.listener = sl
 	log.GetLogger().Printf("开始监听连接\n")
 	go self.serve()
@@ -78,22 +78,22 @@ func (self *HuskyServer) Shutdown() {
 	self.isShutdown = true
 	close(self.StopChan)
 	self.listener.Close()
-	log.GetLogger().Printf("Server|Shutdown...\n")
+	log.GetLogger().Printf("Server Shutdown...\n")
 }
 
 //服务端监听器
-type ServerListener struct {
+type HuskyServerListener struct {
 	*net.TCPListener
 	stop      chan bool
 	keepalive time.Duration
 }
 
-func (self *ServerListener) Accept() (*net.TCPConn, error) {
+func (self *HuskyServerListener) Accept() (*net.TCPConn, error) {
 	for {
 		conn, err := self.AcceptTCP()
 		select {
 		case <-self.stop:
-			return nil, errors.New("STOP LISTENING")
+			return nil, errors.New("Stop listen now ...")
 		default:
 		}
 

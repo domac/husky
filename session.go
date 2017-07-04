@@ -124,13 +124,12 @@ func (self *HuskySession) Write(p *Packet) error {
 }
 
 //数据包发送
-func (self *HuskySession) WritePacket() {
+func (self *HuskySession) WritePackets() {
 
 	//批量bulk
 	packets := make([]*Packet, 0, 100)
 
 	for !self.Closed() {
-
 		//从写出通道那里获取发送的消息包任务
 		p := <-self.WriteChannel
 		if nil != p {
@@ -139,7 +138,6 @@ func (self *HuskySession) WritePacket() {
 		l := int(math.Min(float64(len(self.WriteChannel)), 100))
 		//如果channel的长度还有数据批量最多读取100合并写出
 		//减少系统调用
-
 		for i := 0; i < l; i++ {
 			p := <-self.WriteChannel
 			if nil != p {
@@ -150,12 +148,12 @@ func (self *HuskySession) WritePacket() {
 		if len(packets) > 0 {
 			self.writeBulk(packets)
 			self.lasttime = time.Now()
-			//情况bulk
+			//清空包
 			packets = packets[:0]
 		}
 	}
 
-	//deal left packet
+	//drain channel now
 	for {
 		_, ok := <-self.WriteChannel
 		if !ok {

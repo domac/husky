@@ -1,6 +1,7 @@
 package husky
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/domac/husky/log"
@@ -63,6 +64,17 @@ func (self *HuskyClient) GetSession() *HuskySession {
 	return self.session
 }
 
+//带Context的客户端启动
+func (self *HuskyClient) StartWithContext(ctx context.Context) {
+	go func() {
+		self.Start()
+		log.GetLogger().Info("wait context")
+		<-ctx.Done()
+		self.Shutdown()
+		log.GetLogger().Errorln(ctx.Err())
+	}()
+}
+
 //客户端服务启动
 func (self *HuskyClient) Start() {
 
@@ -72,7 +84,7 @@ func (self *HuskyClient) Start() {
 	self.remoteAddr = fmt.Sprintf("%s:%d", raddr.IP, raddr.Port)
 
 	//开启写操作
-	go self.session.WritePacket()
+	go self.session.WritePackets()
 
 	//开启转发
 	go self.schedulerPackets()
