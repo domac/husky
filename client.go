@@ -96,7 +96,7 @@ func (self *HuskyClient) Start() {
 }
 
 //重连
-func (self *HuskyClient) reconnect() (bool, error) {
+func (self *HuskyClient) Reconnect() (bool, error) {
 
 	//重新创建物理连接
 	conn, err := net.DialTCP("tcp4", nil, self.conn.RemoteAddr().(*net.TCPAddr))
