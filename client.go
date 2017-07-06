@@ -151,7 +151,7 @@ func (hclient *HuskyClient) ReleaseReq(seqId int32, obj interface{}) {
 			log.GetLogger().Fatalf("release packet fail : %s - %s\n", err, obj)
 		}
 	}()
-	hclient.rc.RequestHolder.RemoveFuture(seqId, obj)
+	hclient.rc.RequestHolder.ReleaseFuture(seqId, obj)
 }
 
 var ERROR_PONG = errors.New("ERROR PONG TYPE !")

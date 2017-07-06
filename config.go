@@ -136,7 +136,7 @@ func (rh *ReqHolder) locker(id int32) (chan *interface{}, map[int32]*Future) {
 }
 
 //从requesthold中移除
-func (rh *ReqHolder) RemoveFuture(seqId int32, obj interface{}) {
+func (rh *ReqHolder) ReleaseFuture(seqId int32, obj interface{}) {
 	l, m := rh.locker(seqId)
 	l <- nil
 	defer func() { <-l }()
