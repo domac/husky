@@ -59,45 +59,45 @@ func (session *HuskySession) ID() uint64 {
 	return session.id
 }
 
-func (self *HuskySession) RemotingAddr() string {
-	return self.remoteAddr
+func (session *HuskySession) RemotingAddr() string {
+	return session.remoteAddr
 }
 
-func (self *HuskySession) Idle() bool {
-	return time.Now().After(self.lasttime.Add(self.hc.IdleTime))
+func (session *HuskySession) Idle() bool {
+	return time.Now().After(session.lasttime.Add(session.hc.IdleTime))
 }
 
-func (self *HuskySession) Closed() bool {
-	return atomic.LoadInt32(&self.closeFlag) == 1
+func (session *HuskySession) Closed() bool {
+	return atomic.LoadInt32(&session.closeFlag) == 1
 }
 
 //数据包读取
-func (self *HuskySession) ReadPacket() {
+func (session *HuskySession) ReadPacket() {
 
-	for !self.Closed() {
+	for !session.Closed() {
 		//由于有for, 所以有defer的情况,最后用匿名函数包起来
 		func() {
 			defer func() {
 				if err := recover(); nil != err {
-					log.GetLogger().Fatalf("session read packet : %s recover == fail :%s", self.remoteAddr, err)
+					log.GetLogger().Fatalf("session read packet : %s recover == fail :%s", session.remoteAddr, err)
 				}
 			}()
 
-			buffer, err := self.codec.Read(self.buffreader)
+			buffer, err := session.codec.Read(session.buffreader)
 
 			if err != nil {
-				self.Close()
+				session.Close()
 				return
 			}
 
 			//通过译码器解码
-			p, err := self.codec.UnmarshalPacket(buffer)
+			p, err := session.codec.UnmarshalPacket(buffer)
 			if nil != err {
-				self.Close()
-				log.GetLogger().Fatalf("session read packet marshal packet : %s == fail close session: %s", self.remoteAddr, err)
+				session.Close()
+				log.GetLogger().Fatalf("session read packet marshal packet : %s == fail close session: %s", session.remoteAddr, err)
 				return
 			}
-			self.ReadChannel <- p
+			session.ReadChannel <- p
 		}()
 	}
 

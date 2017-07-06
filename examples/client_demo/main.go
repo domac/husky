@@ -13,7 +13,7 @@ func main() {
 	simpleClient := NewClient(conn, nil, nil)
 
 	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, 50*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	simpleClient.StartWithContext(ctx)

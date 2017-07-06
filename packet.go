@@ -63,18 +63,18 @@ func NewPbStringPacket(packetId int32, messageType string, data string) *Packet 
 	return p
 }
 
-func (self *Packet) MarshalPacket() []byte {
+func (p *Packet) MarshalPacket() []byte {
 	dl := 0
-	if nil != self.Data {
-		dl = len(self.Data)
+	if nil != p.Data {
+		dl = len(p.Data)
 	}
-	buff := MarshalHeader(self.Header, int32(dl))
-	buff.Write(self.Data)
+	buff := MarshalHeader(p.Header, int32(dl))
+	buff.Write(p.Data)
 	return buff.Bytes()
 }
 
-func (self *Packet) ResetPacket() {
-	self.Header.PacketId = -1
+func (p *Packet) ResetPacket() {
+	p.Header.PacketId = -1
 }
 
 type PacketHeader struct {

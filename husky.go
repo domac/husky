@@ -3,6 +3,7 @@ package husky
 import (
 	"errors"
 	"github.com/domac/husky/log"
+	"golang.org/x/time/rate"
 	"net"
 	"time"
 )
@@ -17,6 +18,7 @@ type HuskyServer struct {
 	packetReceiveCallBack CallBackFunc
 	rc                    *HuskyConfig
 	listener              *HuskyServerListener
+	limiter               *RateLimiter
 }
 
 func NewServer(hostport string, hc *HuskyConfig, callback CallBackFunc) *HuskyServer {
@@ -36,9 +38,14 @@ func NewServer(hostport string, hc *HuskyConfig, callback CallBackFunc) *HuskySe
 	return server
 }
 
-func (self *HuskyServer) ListenAndServer() error {
+//服务限速器
+func (hs *HuskyServer) SetLimiter(limiter *RateLimiter) {
+	hs.limiter = limiter
+}
 
-	addr, err := net.ResolveTCPAddr("tcp4", self.hostport)
+func (hs *HuskyServer) ListenAndServer() error {
+
+	addr, err := net.ResolveTCPAddr("tcp4", hs.hostport)
 	if nil != err {
 		log.GetLogger().Fatalf("server resolve tcp addr fail %s\n", err)
 		return err
@@ -50,22 +57,31 @@ func (self *HuskyServer) ListenAndServer() error {
 		return err
 	}
 
-	sl := &HuskyServerListener{listener, self.StopChan, self.keepalive}
-	self.listener = sl
+	sl := &HuskyServerListener{listener, hs.StopChan, hs.keepalive}
+	hs.listener = sl
 	log.GetLogger().Printf("开始监听连接\n")
-	go self.serve()
+	go hs.serve()
 	return nil
 }
 
-func (self *HuskyServer) serve() error {
-	sl := self.listener
-	for !self.isShutdown {
+func (hs *HuskyServer) serve() error {
+	sl := hs.listener
+
+	for !hs.isShutdown {
+		if hs.limiter != nil {
+			ok := hs.limiter.GetQuota()
+			if !ok {
+				println("reject connection")
+				log.GetLogger().Infof("reject connection, current quota :%d", hs.limiter.QuotaPerSecond())
+				continue
+			}
+		}
 		conn, err := sl.Accept()
 		if nil != err {
 			log.GetLogger().Fatalf("Server serve accept fail %s\n", err)
 			continue
 		} else {
-			remoteClient := NewClient(conn, self.packetReceiveCallBack, self.rc)
+			remoteClient := NewClient(conn, hs.packetReceiveCallBack, hs.rc)
 			remoteClient.Start()
 
 		}
@@ -74,10 +90,10 @@ func (self *HuskyServer) serve() error {
 }
 
 //服务端关闭
-func (self *HuskyServer) Shutdown() {
-	self.isShutdown = true
-	close(self.StopChan)
-	self.listener.Close()
+func (hs *HuskyServer) Shutdown() {
+	hs.isShutdown = true
+	close(hs.StopChan)
+	hs.listener.Close()
 	log.GetLogger().Printf("Server Shutdown...\n")
 }
 
@@ -88,18 +104,18 @@ type HuskyServerListener struct {
 	keepalive time.Duration
 }
 
-func (self *HuskyServerListener) Accept() (*net.TCPConn, error) {
+func (hsl *HuskyServerListener) Accept() (*net.TCPConn, error) {
 	for {
-		conn, err := self.AcceptTCP()
+		conn, err := hsl.AcceptTCP()
 		select {
-		case <-self.stop:
+		case <-hsl.stop:
 			return nil, errors.New("Stop listen now ...")
 		default:
 		}
 
 		if nil == err {
 			conn.SetKeepAlive(true)
-			conn.SetKeepAlivePeriod(self.keepalive)
+			conn.SetKeepAlivePeriod(hsl.keepalive)
 		} else {
 			return nil, err
 		}
@@ -107,4 +123,27 @@ func (self *HuskyServerListener) Accept() (*net.TCPConn, error) {
 		return conn, err
 	}
 
+}
+
+type RateLimiter struct {
+	limiter     *rate.Limiter
+	rejectCount int64
+}
+
+func NewRateLimiter(initQuota int, quotaPerSecond int) *RateLimiter {
+	return &RateLimiter{
+		limiter: rate.NewLimiter(rate.Limit(quotaPerSecond), initQuota),
+	}
+}
+
+func (rl *RateLimiter) QuotaPerSecond() int {
+	return int(rl.limiter.Limit())
+}
+
+func (rl *RateLimiter) GetQuota() bool {
+	return rl.limiter.Allow()
+}
+
+func (self *RateLimiter) GetQuotas(quotaCount int) bool {
+	return self.limiter.AllowN(time.Now(), quotaCount)
 }

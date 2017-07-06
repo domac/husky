@@ -39,32 +39,32 @@ func NewErrFuture(seqId int32, TargetHost string, err error) *Future {
 		err}
 }
 
-func (self Future) Error(err error) {
-	self.Err = err
-	self.response <- err
+func (f Future) Error(err error) {
+	f.Err = err
+	f.response <- err
 }
 
-func (self Future) SetResponse(resp interface{}) {
-	self.response <- resp
+func (f Future) SetResponse(resp interface{}) {
+	f.response <- resp
 
 }
 
 //异步获取
-func (self Future) Get(timeout <-chan time.Time) (interface{}, error) {
-	if nil != self.Err {
-		return nil, self.Err
+func (f Future) Get(timeout <-chan time.Time) (interface{}, error) {
+	if nil != f.Err {
+		return nil, f.Err
 	}
 
 	select {
 	case <-timeout:
 		select {
-		case resp := <-self.response:
+		case resp := <-f.response:
 			return resp, nil
 		default:
 			//如果是已经超时了但是当前还是没有响应也认为超时
 			return nil, TIMEOUT_ERROR
 		}
-	case resp := <-self.response:
+	case resp := <-f.response:
 		e, ok := resp.(error)
 		if ok {
 			return nil, e
@@ -127,17 +127,17 @@ type ReqHolder struct {
 	holders  []map[int32]*Future
 }
 
-func (self *ReqHolder) CurrentSeqId() int32 {
-	return int32((atomic.AddUint32(&self.seqId, 1) % uint32(self.maxseqId)))
+func (rh *ReqHolder) CurrentSeqId() int32 {
+	return int32((atomic.AddUint32(&rh.seqId, 1) % uint32(rh.maxseqId)))
 }
 
-func (self *ReqHolder) locker(id int32) (chan *interface{}, map[int32]*Future) {
-	return self.locks[id%CONCURRENT_LEVEL], self.holders[id%CONCURRENT_LEVEL]
+func (rh *ReqHolder) locker(id int32) (chan *interface{}, map[int32]*Future) {
+	return rh.locks[id%CONCURRENT_LEVEL], rh.holders[id%CONCURRENT_LEVEL]
 }
 
 //从requesthold中移除
-func (self *ReqHolder) RemoveFuture(seqId int32, obj interface{}) {
-	l, m := self.locker(seqId)
+func (rh *ReqHolder) RemoveFuture(seqId int32, obj interface{}) {
+	l, m := rh.locker(seqId)
 	l <- nil
 	defer func() { <-l }()
 
@@ -148,8 +148,8 @@ func (self *ReqHolder) RemoveFuture(seqId int32, obj interface{}) {
 	}
 }
 
-func (self *ReqHolder) AddFuture(seqId int32, future *Future) {
-	l, m := self.locker(seqId)
+func (rh *ReqHolder) AddFuture(seqId int32, future *Future) {
+	l, m := rh.locker(seqId)
 	l <- nil
 	defer func() { <-l }()
 	m[seqId] = future
