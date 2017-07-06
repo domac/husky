@@ -104,50 +104,50 @@ func (session *HuskySession) ReadPacket() {
 }
 
 //写出数据
-func (self *HuskySession) Write(p *Packet) error {
+func (session *HuskySession) Write(p *Packet) error {
 
 	defer func() {
 		if err := recover(); nil != err {
-			log.GetLogger().Fatalf("session write %s recover fail :%s", self.remoteAddr, err)
+			log.GetLogger().Fatalf("session write %s recover fail :%s", session.remoteAddr, err)
 		}
 	}()
 
-	if !self.Closed() {
+	if !session.Closed() {
 		select {
-		case self.WriteChannel <- p:
+		case session.WriteChannel <- p:
 			return nil
 		default:
-			return errors.New(fmt.Sprintf("WRITE CHANNLE [%s] FULL", self.remoteAddr))
+			return errors.New(fmt.Sprintf("WRITE CHANNLE [%s] FULL", session.remoteAddr))
 		}
 	}
-	return errors.New(fmt.Sprintf("session [%s] closed", self.remoteAddr))
+	return errors.New(fmt.Sprintf("session [%s] closed", session.remoteAddr))
 }
 
 //数据包发送
-func (self *HuskySession) WritePackets() {
+func (session *HuskySession) WritePackets() {
 
 	//批量bulk
 	packets := make([]*Packet, 0, 100)
 
-	for !self.Closed() {
+	for !session.Closed() {
 		//从写出通道那里获取发送的消息包任务
-		p := <-self.WriteChannel
+		p := <-session.WriteChannel
 		if nil != p {
 			packets = append(packets, p)
 		}
-		l := int(math.Min(float64(len(self.WriteChannel)), 100))
+		l := int(math.Min(float64(len(session.WriteChannel)), 100))
 		//如果channel的长度还有数据批量最多读取100合并写出
 		//减少系统调用
 		for i := 0; i < l; i++ {
-			p := <-self.WriteChannel
+			p := <-session.WriteChannel
 			if nil != p {
 				packets = append(packets, p)
 			}
 		}
 
 		if len(packets) > 0 {
-			self.writeBulk(packets)
-			self.lasttime = time.Now()
+			session.writeBulk(packets)
+			session.lasttime = time.Now()
 			//清空包
 			packets = packets[:0]
 		}
@@ -155,7 +155,7 @@ func (self *HuskySession) WritePackets() {
 
 	//drain channel now
 	for {
-		_, ok := <-self.WriteChannel
+		_, ok := <-session.WriteChannel
 		if !ok {
 			break
 		}
@@ -163,10 +163,10 @@ func (self *HuskySession) WritePackets() {
 }
 
 //批量写入到网络流
-func (self *HuskySession) writeBulk(tlv []*Packet) {
+func (session *HuskySession) writeBulk(tlv []*Packet) {
 	batch := make([]byte, 0, len(tlv)*128)
 	for _, t := range tlv {
-		p := self.codec.MarshalPacket(t)
+		p := session.codec.MarshalPacket(t)
 		if nil == p || len(p) == 0 {
 			continue
 		}
@@ -181,16 +181,16 @@ func (self *HuskySession) writeBulk(tlv []*Packet) {
 	tmp := batch
 	l := 0
 	for {
-		length, err := self.buffwriter.Write(tmp)
+		length, err := session.buffwriter.Write(tmp)
 		if err != nil {
-			log.GetLogger().Printf("session write conn %s fail %s=%d=%d", self.remoteAddr, err, length, len(tmp))
+			log.GetLogger().Printf("session write conn %s fail %s=%d=%d", session.remoteAddr, err, length, len(tmp))
 			if err != io.ErrShortWrite {
-				self.Close()
+				session.Close()
 				return
 			}
 
 			if err == io.ErrShortWrite {
-				self.buffwriter.Reset(self.conn)
+				session.buffwriter.Reset(session.conn)
 			}
 		}
 
@@ -201,18 +201,18 @@ func (self *HuskySession) writeBulk(tlv []*Packet) {
 		}
 		tmp = tmp[l:]
 	}
-	self.buffwriter.Flush()
+	session.buffwriter.Flush()
 }
 
 //会话关闭
-func (self *HuskySession) Close() error {
-	if atomic.CompareAndSwapInt32(&self.closeFlag, 0, 1) {
-		log.GetConsoleLogger().Printf("Session is Closing ...| %s\n", self.remoteAddr)
-		log.GetLogger().Printf("Session is Closing ...| %s\n", self.remoteAddr)
-		self.buffwriter.Flush()
-		self.conn.Close()
-		close(self.WriteChannel)
-		close(self.ReadChannel)
+func (session *HuskySession) Close() error {
+	if atomic.CompareAndSwapInt32(&session.closeFlag, 0, 1) {
+		log.GetConsoleLogger().Printf("Session is Closing ...| %s\n", session.remoteAddr)
+		log.GetLogger().Printf("Session is Closing ...| %s\n", session.remoteAddr)
+		session.buffwriter.Flush()
+		session.conn.Close()
+		close(session.WriteChannel)
+		close(session.ReadChannel)
 	}
 	return nil
 }

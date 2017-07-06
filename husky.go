@@ -144,6 +144,6 @@ func (rl *RateLimiter) GetQuota() bool {
 	return rl.limiter.Allow()
 }
 
-func (self *RateLimiter) GetQuotas(quotaCount int) bool {
-	return self.limiter.AllowN(time.Now(), quotaCount)
+func (rl *RateLimiter) GetQuotas(quotaCount int) bool {
+	return rl.limiter.AllowN(time.Now(), quotaCount)
 }
