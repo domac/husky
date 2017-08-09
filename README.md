@@ -1,6 +1,16 @@
 Husky
 =======
-基于protobuf协议的CS服务层
+基础协议通讯服务层, 支持protobuf
+
+
+## 获取相关依赖:
+
+```
+$ go get -u -v github.com/Sirupsen/logrus
+
+$ go get -u -v github.com/golang/protobuf
+
+```
 
 ## 使用参考:
 
