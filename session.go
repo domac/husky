@@ -41,6 +41,7 @@ func NewHuskySession(conn *net.TCPConn, hc *HuskyConfig) *HuskySession {
 	conn.SetReadBuffer(hc.ReadBufferSize)
 	conn.SetWriteBuffer(hc.WriteBufferSize)
 
+	//session是连接的处理层,husky传输的交互通过session处理
 	session := &HuskySession{
 		id:           atomic.AddUint64(&globalSessionId, 1),
 		conn:         conn,
@@ -74,7 +75,7 @@ func (session *HuskySession) Closed() bool {
 //数据包读取
 func (session *HuskySession) ReadPacket() {
 
-	for !session.Closed() {
+	for session != nil && !session.Closed() {
 		//由于有for, 所以有defer的情况,最后用匿名函数包起来
 		func() {
 			defer func() {
@@ -112,7 +113,7 @@ func (session *HuskySession) Write(p *Packet) error {
 		}
 	}()
 
-	if !session.Closed() {
+	if session != nil && !session.Closed() {
 		select {
 		case session.WriteChannel <- p:
 			return nil
@@ -129,7 +130,7 @@ func (session *HuskySession) WritePackets() {
 	//批量bulk
 	packets := make([]*Packet, 0, 100)
 
-	for !session.Closed() {
+	for session != nil && !session.Closed() {
 		//从写出通道那里获取发送的消息包任务
 		p := <-session.WriteChannel
 		if nil != p {

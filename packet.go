@@ -3,6 +3,7 @@ package husky
 import (
 	"bytes"
 	"fmt"
+	"github.com/domac/husky/log"
 	"github.com/domac/husky/pb"
 	"github.com/golang/protobuf/proto"
 	"time"
@@ -11,6 +12,12 @@ import (
 const (
 	PACKET_HEADER_LENGTH = (4 + 1 + 2 + 4)
 	MAX_BYTES            = 32 * 1024
+
+	//message
+	NORMAL_MESSAGE    = uint8(0x01) //普通类型
+	ERROR_MESSAGE     = uint8(0x02) //错误类型
+	PB_BYTES_MESSAGE  = uint8(0x03) //protobuff bytes类型
+	PB_STRING_MESSAGE = uint8(0x04) //protobuff string类型
 )
 
 type Packet struct {
@@ -18,10 +25,11 @@ type Packet struct {
 	Data   []byte
 }
 
+//创建数据包
 func NewPacket(data []byte) *Packet {
 	h := PacketHeader{
-		PacketId:    -1,
-		ContentType: uint8(0x01),
+		PacketId:    0,
+		ContentType: NORMAL_MESSAGE,
 		BodyLenth:   int32(len(data))}
 
 	return &Packet{
@@ -29,36 +37,37 @@ func NewPacket(data []byte) *Packet {
 		Data:   data}
 }
 
-func NewCmdPacket(packetId int32, cmdtype uint8, data []byte) *Packet {
+//定制数据包
+func buildPacket(packetId int32, cmdtype uint8, data []byte) *Packet {
 	p := NewPacket(data)
 	p.Header.PacketId = packetId
 	p.Header.ContentType = cmdtype
 	return p
 }
 
-func NewPbBytesPacket(packetId int32, messageType string, data []byte) *Packet {
+func NewPbBytesPacket(packetId int32, functionType string, data []byte) *Packet {
 
 	header := &pb.Header{
-		MessageId:   proto.String(fmt.Sprintf("%d", packetId)),
-		MessageType: proto.String(messageType),
-		CreateTime:  proto.Int64(time.Now().Unix())}
+		MessageId:    proto.String(fmt.Sprintf("%d", packetId)),
+		FunctionType: proto.String(functionType),
+		CreateTime:   proto.Int64(time.Now().Unix())}
 
-	dataBytes := pb.MarshalMessage(header, pb.PB_BYTES_MESSAGE, data)
+	dataBytes := GetMarshalMessage(header, PB_BYTES_MESSAGE, data)
 
-	p := NewCmdPacket(packetId, pb.PB_BYTES_MESSAGE, dataBytes)
+	p := buildPacket(packetId, PB_BYTES_MESSAGE, dataBytes)
 	p.Header.PacketId = packetId
 	return p
 }
 
-func NewPbStringPacket(packetId int32, messageType string, data string) *Packet {
+func NewPbStringPacket(packetId int32, functionType string, data string) *Packet {
 	header := &pb.Header{
-		MessageId:   proto.String(fmt.Sprintf("%d", packetId)),
-		MessageType: proto.String(messageType),
-		CreateTime:  proto.Int64(time.Now().Unix())}
+		MessageId:    proto.String(fmt.Sprintf("%d", packetId)),
+		FunctionType: proto.String(functionType),
+		CreateTime:   proto.Int64(time.Now().Unix())}
 
-	dataBytes := pb.MarshalMessage(header, pb.PB_STRING_MESSAGE, data)
+	dataBytes := GetMarshalMessage(header, PB_STRING_MESSAGE, data)
 
-	p := NewCmdPacket(packetId, pb.PB_STRING_MESSAGE, dataBytes)
+	p := buildPacket(packetId, PB_STRING_MESSAGE, dataBytes)
 	p.Header.PacketId = packetId
 	return p
 }
@@ -123,4 +132,52 @@ func UnmarshalHeader(r *bytes.Reader) (PacketHeader, error) {
 	}
 
 	return header, nil
+}
+
+// --------  处理prorobuf消息
+
+// 序列化消息
+func GetMarshalMessage(header *pb.Header, msgType uint8, body interface{}) []byte {
+	switch msgType {
+	case PB_BYTES_MESSAGE:
+		message := &pb.BytesMessage{}
+		message.Header = header
+		message.Body = body.([]byte)
+
+		data, err := proto.Marshal(message)
+		if nil != err {
+			log.GetLogger().Errorf("Marshall Bytes Message Error |%s|%d|%s\n", header, msgType, err)
+		}
+		return data
+	case PB_STRING_MESSAGE:
+		message := &pb.StringMessage{}
+		message.Header = header
+		message.Body = proto.String(body.(string))
+		data, err := proto.Marshal(message)
+		if nil != err {
+			log.GetLogger().Errorf("Marshall String Message Error |%s|%d|%s\n", header, msgType, err)
+		}
+		return data
+	}
+	return nil
+}
+
+func UnmarshalPbMessage(data []byte, msg proto.Message) error {
+	return proto.Unmarshal(data, msg)
+}
+
+func MarshalPbString(s string) *string {
+	return proto.String(s)
+}
+
+func MarshalInt32(i int32) *int32 {
+	return proto.Int32(i)
+}
+
+func MarshalInt64(i int64) *int64 {
+	return proto.Int64(i)
+}
+
+func MarshalPbMessage(message proto.Message) ([]byte, error) {
+	return proto.Marshal(message)
 }

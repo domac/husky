@@ -22,9 +22,18 @@ func main() {
 		p := NewPbBytesPacket(1, "democlient", []byte("husky"))
 		resp, _ := simpleClient.SyncWrite(*p, 5*time.Millisecond)
 		bm := &pb.BytesMessage{}
-		pb.UnmarshalPbMessage(resp.([]byte), bm)
-		fmt.Printf("resp >=====> %s|%s\n", string(bm.GetBody()), bm.GetHeader().GetMessageType())
+		UnmarshalPbMessage(resp.([]byte), bm)
+		fmt.Printf("resp >=====> %s|%s\n", string(bm.GetBody()), bm.GetHeader().GetFunctionType())
 	}
+
+	for j := 0; j < 5; j++ {
+		p := NewPacket([]byte("123"))
+		resp, _ := simpleClient.SyncWrite(*p, 15*time.Millisecond)
+		if resp != nil {
+			fmt.Printf("%v\n", string(resp.([]byte)))
+		}
+	}
+
 	<-ctx.Done()
 	println("client Down !!")
 	cancel()

@@ -1,9 +1,12 @@
 package pb;
 
+//使用:
+//本目录: protoc --go_out=. *.proto
+
 //包头
 message Header{
     required string messageId = 1; //消息编号
-    required string messageType = 2; //消息类型
+    required string functionType = 2; //消息类型
     optional int64 createTime  = 3; //消息生成时间
 }
 
