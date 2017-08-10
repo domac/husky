@@ -2,8 +2,8 @@ package husky
 
 import (
 	"errors"
-	"github.com/domac/husky/log"
 	"golang.org/x/time/rate"
+	"log"
 	"net"
 	"time"
 )
@@ -47,19 +47,19 @@ func (hs *HuskyServer) ListenAndServer() error {
 
 	addr, err := net.ResolveTCPAddr("tcp4", hs.hostport)
 	if nil != err {
-		log.GetLogger().Fatalf("server resolve tcp addr fail %s\n", err)
+		log.Fatalf("server resolve tcp addr fail %s\n", err)
 		return err
 	}
 
 	listener, err := net.ListenTCP("tcp4", addr)
 	if nil != err {
-		log.GetLogger().Fatalf("Server ListenTCP fail >> %s\n", err)
+		log.Fatalf("Server ListenTCP fail >> %s\n", err)
 		return err
 	}
 
 	sl := &HuskyServerListener{listener, hs.StopChan, hs.keepalive}
 	hs.listener = sl
-	log.GetLogger().Printf("开始监听连接\n")
+	log.Printf("开始监听连接\n")
 	go hs.serve()
 	return nil
 }
@@ -71,14 +71,13 @@ func (hs *HuskyServer) serve() error {
 		if hs.limiter != nil {
 			ok := hs.limiter.GetQuota()
 			if !ok {
-				println("reject connection")
-				log.GetLogger().Infof("reject connection, current quota :%d", hs.limiter.QuotaPerSecond())
+				log.Printf("reject connection, current quota :%d", hs.limiter.QuotaPerSecond())
 				continue
 			}
 		}
 		conn, err := sl.Accept()
 		if nil != err {
-			log.GetLogger().Fatalf("Server serve accept fail %s\n", err)
+			log.Fatalf("Server serve accept fail %s\n", err)
 			continue
 		} else {
 			remoteClient := NewClient(conn, hs.packetReceiveCallBack, hs.rc)
@@ -94,7 +93,7 @@ func (hs *HuskyServer) Shutdown() {
 	hs.isShutdown = true
 	close(hs.StopChan)
 	hs.listener.Close()
-	log.GetLogger().Printf("Server Shutdown...\n")
+	log.Printf("Server Shutdown...\n")
 }
 
 //服务端监听器

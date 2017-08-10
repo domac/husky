@@ -3,9 +3,9 @@ package husky
 import (
 	"bytes"
 	"fmt"
-	"github.com/domac/husky/log"
 	"github.com/domac/husky/pb"
 	"github.com/golang/protobuf/proto"
+	"log"
 	"time"
 )
 
@@ -146,7 +146,7 @@ func GetMarshalMessage(header *pb.Header, msgType uint8, body interface{}) []byt
 
 		data, err := proto.Marshal(message)
 		if nil != err {
-			log.GetLogger().Errorf("Marshall Bytes Message Error |%s|%d|%s\n", header, msgType, err)
+			log.Fatalf("Marshall Bytes Message Error |%s|%d|%s\n", header, msgType, err)
 		}
 		return data
 	case PB_STRING_MESSAGE:
@@ -155,7 +155,7 @@ func GetMarshalMessage(header *pb.Header, msgType uint8, body interface{}) []byt
 		message.Body = proto.String(body.(string))
 		data, err := proto.Marshal(message)
 		if nil != err {
-			log.GetLogger().Errorf("Marshall String Message Error |%s|%d|%s\n", header, msgType, err)
+			log.Fatalf("Marshall String Message Error |%s|%d|%s\n", header, msgType, err)
 		}
 		return data
 	}

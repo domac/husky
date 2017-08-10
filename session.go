@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/domac/husky/log"
 	"io"
+	"log"
 	"math"
 	"net"
 	"sync"
@@ -80,7 +80,7 @@ func (session *HuskySession) ReadPacket() {
 		func() {
 			defer func() {
 				if err := recover(); nil != err {
-					log.GetLogger().Fatalf("session read packet : %s recover == fail :%s", session.remoteAddr, err)
+					log.Fatalf("session read packet : %s recover == fail :%s", session.remoteAddr, err)
 				}
 			}()
 
@@ -95,7 +95,7 @@ func (session *HuskySession) ReadPacket() {
 			p, err := session.codec.UnmarshalPacket(buffer)
 			if nil != err {
 				session.Close()
-				log.GetLogger().Fatalf("session read packet marshal packet : %s == fail close session: %s", session.remoteAddr, err)
+				log.Fatalf("session read packet marshal packet : %s == fail close session: %s", session.remoteAddr, err)
 				return
 			}
 			session.ReadChannel <- p
@@ -109,7 +109,7 @@ func (session *HuskySession) Write(p *Packet) error {
 
 	defer func() {
 		if err := recover(); nil != err {
-			log.GetLogger().Fatalf("session write %s recover fail :%s", session.remoteAddr, err)
+			log.Fatalf("session write %s recover fail :%s", session.remoteAddr, err)
 		}
 	}()
 
@@ -184,7 +184,7 @@ func (session *HuskySession) writeBulk(tlv []*Packet) {
 	for {
 		length, err := session.buffwriter.Write(tmp)
 		if err != nil {
-			log.GetLogger().Printf("session write conn %s fail %s=%d=%d", session.remoteAddr, err, length, len(tmp))
+			log.Printf("session write conn %s fail %s=%d=%d", session.remoteAddr, err, length, len(tmp))
 			if err != io.ErrShortWrite {
 				session.Close()
 				return
@@ -208,8 +208,7 @@ func (session *HuskySession) writeBulk(tlv []*Packet) {
 //会话关闭
 func (session *HuskySession) Close() error {
 	if atomic.CompareAndSwapInt32(&session.closeFlag, 0, 1) {
-		log.GetConsoleLogger().Printf("Session is Closing ...| %s\n", session.remoteAddr)
-		log.GetLogger().Printf("Session is Closing ...| %s\n", session.remoteAddr)
+		log.Printf("Session is Closing ...| %s\n", session.remoteAddr)
 		session.buffwriter.Flush()
 		session.conn.Close()
 		close(session.WriteChannel)

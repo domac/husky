@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/domac/husky/log"
+	"log"
 	"net"
 	"time"
 )
@@ -69,10 +69,10 @@ func (hclient *HuskyClient) GetSession() *HuskySession {
 func (hclient *HuskyClient) StartWithContext(ctx context.Context) {
 	go func() {
 		hclient.Start()
-		log.GetLogger().Info("wait context")
+		log.Printf("wait context")
 		<-ctx.Done()
 		hclient.Shutdown()
-		log.GetLogger().Errorln(ctx.Err())
+		log.Fatal(ctx.Err())
 	}()
 }
 
@@ -93,7 +93,7 @@ func (hclient *HuskyClient) Start() {
 	//启动读取
 	go hclient.session.ReadPacket()
 
-	log.GetLogger().Infof("client start success ! local: %s , remote: %s \n", hclient.LocalAddr(), hclient.RemoteAddr())
+	log.Printf("client start success ! local: %s , remote: %s \n", hclient.LocalAddr(), hclient.RemoteAddr())
 }
 
 //重连
@@ -102,7 +102,7 @@ func (hclient *HuskyClient) Reconnect() (bool, error) {
 	//重新创建物理连接
 	conn, err := net.DialTCP("tcp4", nil, hclient.conn.RemoteAddr().(*net.TCPAddr))
 	if nil != err {
-		log.GetLogger().Fatalf("client reconnect (%s) fail : %s\n", hclient.RemoteAddr(), err)
+		log.Fatalf("client reconnect (%s) fail : %s\n", hclient.RemoteAddr(), err)
 		return false, err
 	}
 
@@ -137,7 +137,7 @@ func (hclient *HuskyClient) schedulerPackets() {
 			//调用自定义的包消息处理函数
 
 			if hclient.packetReceiveCallBack == nil {
-				log.GetLogger().Fatalf("packetDispatcher is null \n")
+				log.Fatalf("packetDispatcher is null \n")
 			}
 
 			hclient.packetReceiveCallBack(hclient, p)
@@ -149,7 +149,7 @@ func (hclient *HuskyClient) schedulerPackets() {
 func (hclient *HuskyClient) FinishReq(seqId int32, obj interface{}) {
 	defer func() {
 		if err := recover(); nil != err {
-			log.GetLogger().Fatalf("release packet fail : %s - %s\n", err, obj)
+			log.Fatalf("release packet fail : %s - %s\n", err, obj)
 		}
 	}()
 	hclient.huskyConfig.RequestHolder.ReleaseFuture(seqId, obj)
@@ -165,7 +165,7 @@ func (hclient *HuskyClient) Ping(heartbeat *Packet, timeout time.Duration) error
 	}
 	version, ok := pong.(int64)
 	if !ok {
-		log.GetLogger().Fatalf("client ping error |%s\n", pong)
+		log.Fatalf("client ping error |%s\n", pong)
 		return ERROR_PONG
 	}
 	hclient.updateHeartBeat(version)
@@ -228,7 +228,7 @@ func (hclient *HuskyClient) IsClosed() bool {
 //客户端关闭==>断开会话
 func (hclient *HuskyClient) Shutdown() {
 	hclient.session.Close()
-	log.GetLogger().Printf("client shutdown %s...\n", hclient.RemoteAddr())
+	log.Printf("client shutdown %s...\n", hclient.RemoteAddr())
 }
 
 //创建物理连接
