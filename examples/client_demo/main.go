@@ -5,6 +5,7 @@ import (
 	"fmt"
 	. "github.com/domac/husky"
 	"github.com/domac/husky/pb"
+	_ "net/http/pprof"
 	"time"
 )
 

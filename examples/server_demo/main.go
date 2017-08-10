@@ -4,6 +4,8 @@ import (
 	. "github.com/domac/husky"
 	"github.com/domac/husky/log"
 	"github.com/domac/husky/pb"
+	"net/http"
+	_ "net/http/pprof"
 )
 
 func main() {
@@ -27,5 +29,8 @@ func main() {
 
 	})
 	simpleServer.ListenAndServer()
+
+	http.ListenAndServe(":9090", nil)
+
 	<-simpleServer.StopChan
 }
