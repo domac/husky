@@ -6,13 +6,11 @@ import (
 	"time"
 )
 
-const (
-	CONCURRENT_LEVEL = 8
-)
+//最大工作并发数
+const MAX_WORK_PROCESSES = 8
 
-var TIMEOUT_ERROR = errors.New("WAIT RESPONSE TIMEOUT ")
-var ERROR_OVER_FLOW = errors.New("Group Over Flow")
-var ERROR_NO_HOSTS = errors.New("NO VALID RemoteClient")
+//超时错误
+var TIMEOUT_ERROR = errors.New("RESP WAIT TIMEOUT")
 
 //响应式钩子
 type Future struct {
@@ -90,10 +88,10 @@ func NewConfig(maxSchedulerNum, readbuffersize, writebuffersize,
 	writechannelsize, readchannelsize int, idletime time.Duration, maxseqId int) *HuskyConfig {
 
 	//定义holder
-	holders := make([]map[int32]*Future, 0, CONCURRENT_LEVEL)
-	locks := make([]chan *interface{}, 0, CONCURRENT_LEVEL)
-	for i := 0; i < CONCURRENT_LEVEL; i++ {
-		splitMap := make(map[int32]*Future, maxseqId/CONCURRENT_LEVEL)
+	holders := make([]map[int32]*Future, 0, MAX_WORK_PROCESSES)
+	locks := make([]chan *interface{}, 0, MAX_WORK_PROCESSES)
+	for i := 0; i < MAX_WORK_PROCESSES; i++ {
+		splitMap := make(map[int32]*Future, maxseqId/MAX_WORK_PROCESSES)
 		holders = append(holders, splitMap)
 		locks = append(locks, make(chan *interface{}, 1))
 	}
@@ -132,7 +130,7 @@ func (rh *ReqHolder) CurrentSeqId() int32 {
 }
 
 func (rh *ReqHolder) locker(id int32) (chan *interface{}, map[int32]*Future) {
-	return rh.locks[id%CONCURRENT_LEVEL], rh.holders[id%CONCURRENT_LEVEL]
+	return rh.locks[id%MAX_WORK_PROCESSES], rh.holders[id%MAX_WORK_PROCESSES]
 }
 
 //从requesthold中移除

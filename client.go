@@ -93,7 +93,7 @@ func (hclient *HuskyClient) Start() {
 	//启动读取
 	go hclient.session.ReadPacket()
 
-	log.Printf("client start success ! local: %s , remote: %s \n", hclient.LocalAddr(), hclient.RemoteAddr())
+	log.Printf("client (%s) connect success ! \n", hclient.RemoteAddr())
 }
 
 //重连

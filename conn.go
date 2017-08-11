@@ -15,15 +15,15 @@ import (
 
 var globalSessionId uint64
 
-//Husky会话状态
+//conn的功能封装层
 type HuskySession struct {
 	id           uint64
 	conn         *net.TCPConn //物理连接
 	remoteAddr   string
-	buffreader   *bufio.Reader //到时候给codec的
-	buffwriter   *bufio.Writer //到时候给codec的
-	ReadChannel  chan *Packet  //到时候给codec的
-	WriteChannel chan *Packet  //到时候给codec的
+	buffreader   *bufio.Reader //读缓冲层
+	buffwriter   *bufio.Writer //写缓冲层
+	ReadChannel  chan *Packet  //消息源通道
+	WriteChannel chan *Packet  //目标消息通道
 	closeFlag    int32
 	closeMutex   sync.Mutex
 	lasttime     time.Time //上次会话工作时间
@@ -78,6 +78,7 @@ func (session *HuskySession) ReadPacket() {
 	for session != nil && !session.Closed() {
 		//由于有for, 所以有defer的情况,最后用匿名函数包起来
 		func() {
+
 			defer func() {
 				if err := recover(); nil != err {
 					log.Fatalf("session read packet : %s recover == fail :%s", session.remoteAddr, err)
@@ -106,12 +107,6 @@ func (session *HuskySession) ReadPacket() {
 
 //写出数据
 func (session *HuskySession) Write(p *Packet) error {
-
-	defer func() {
-		if err := recover(); nil != err {
-			log.Fatalf("session write %s recover fail :%s", session.remoteAddr, err)
-		}
-	}()
 
 	if session != nil && !session.Closed() {
 		select {
@@ -208,11 +203,11 @@ func (session *HuskySession) writeBulk(tlv []*Packet) {
 //会话关闭
 func (session *HuskySession) Close() error {
 	if atomic.CompareAndSwapInt32(&session.closeFlag, 0, 1) {
-		log.Printf("Session is Closing ...| %s\n", session.remoteAddr)
 		session.buffwriter.Flush()
 		session.conn.Close()
 		close(session.WriteChannel)
 		close(session.ReadChannel)
+		log.Printf("session was closed : %s!\n", session.remoteAddr)
 	}
 	return nil
 }

@@ -3,14 +3,11 @@ package main
 import (
 	. "github.com/domac/husky"
 	"github.com/domac/husky/pb"
-	"log"
 	"net/http"
 	_ "net/http/pprof"
 )
 
 func main() {
-	log.Println("Start Server")
-
 	simpleServer := NewServer("localhost:10028", nil, func(remoteClient *HuskyClient, p *Packet) {
 
 		if p.Header.ContentType == PB_BYTES_MESSAGE {
@@ -26,10 +23,10 @@ func main() {
 			resp := NewPacket([]byte("get string"))
 			remoteClient.Write(*resp)
 		}
-
 	})
 	simpleServer.ListenAndServer()
 
+	//开启http, 用于debug
 	http.ListenAndServe(":9090", nil)
 
 	<-simpleServer.StopChan

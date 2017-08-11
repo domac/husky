@@ -59,7 +59,7 @@ func (hs *HuskyServer) ListenAndServer() error {
 
 	sl := &HuskyServerListener{listener, hs.StopChan, hs.keepalive}
 	hs.listener = sl
-	log.Printf("开始监听连接\n")
+	log.Printf("start listening\n")
 	go hs.serve()
 	return nil
 }
