@@ -10,19 +10,19 @@ import (
 )
 
 //网络层客户端
-type HuskyClient struct {
+type HClient struct {
 	conn                  *net.TCPConn
 	localAddr             string
 	remoteAddr            string
 	heartbeat             int64
 	session               *HuskySession
-	packetReceiveCallBack func(client *HuskyClient, p *Packet)
+	packetReceiveCallBack func(client *HClient, p *Packet)
 	huskyConfig           *HuskyConfig
 	AttachChannel         chan interface{} //用于处理统一个连接上返回信息
 }
 
-func NewClient(conn *net.TCPConn, packetReceiveCallBack func(remoteClient *HuskyClient, p *Packet),
-	hc *HuskyConfig) *HuskyClient {
+func NewClient(conn *net.TCPConn, packetReceiveCallBack func(remoteClient *HClient, p *Packet),
+	hc *HuskyConfig) *HClient {
 
 	//省缺配置
 	if hc == nil {
@@ -30,7 +30,7 @@ func NewClient(conn *net.TCPConn, packetReceiveCallBack func(remoteClient *Husky
 	}
 
 	if packetReceiveCallBack == nil {
-		packetReceiveCallBack = func(remoteClient *HuskyClient, resp *Packet) {
+		packetReceiveCallBack = func(remoteClient *HClient, resp *Packet) {
 			remoteClient.FinishReq(resp.Header.PacketId, resp.Data)
 		}
 	}
@@ -38,7 +38,7 @@ func NewClient(conn *net.TCPConn, packetReceiveCallBack func(remoteClient *Husky
 	//会话状态
 	remoteSession := NewHuskySession(conn, hc)
 
-	Client := &HuskyClient{
+	Client := &HClient{
 		heartbeat:             0,
 		conn:                  conn,
 		session:               remoteSession,
@@ -49,24 +49,24 @@ func NewClient(conn *net.TCPConn, packetReceiveCallBack func(remoteClient *Husky
 	return Client
 }
 
-func (hclient *HuskyClient) RemoteAddr() string {
+func (hclient *HClient) RemoteAddr() string {
 	return hclient.remoteAddr
 }
 
-func (hclient *HuskyClient) LocalAddr() string {
+func (hclient *HClient) LocalAddr() string {
 	return hclient.localAddr
 }
 
-func (hclient *HuskyClient) Idle() bool {
+func (hclient *HClient) Idle() bool {
 	return hclient.session.Idle()
 }
 
-func (hclient *HuskyClient) GetSession() *HuskySession {
+func (hclient *HClient) GetSession() *HuskySession {
 	return hclient.session
 }
 
 //带Context的客户端启动
-func (hclient *HuskyClient) StartWithContext(ctx context.Context) {
+func (hclient *HClient) StartWithContext(ctx context.Context) {
 	go func() {
 		hclient.Start()
 		log.Printf("wait context")
@@ -77,7 +77,7 @@ func (hclient *HuskyClient) StartWithContext(ctx context.Context) {
 }
 
 //客户端服务启动
-func (hclient *HuskyClient) Start() {
+func (hclient *HClient) Start() {
 
 	laddr := hclient.conn.LocalAddr().(*net.TCPAddr)
 	raddr := hclient.conn.RemoteAddr().(*net.TCPAddr)
@@ -97,7 +97,7 @@ func (hclient *HuskyClient) Start() {
 }
 
 //重连
-func (hclient *HuskyClient) Reconnect() (bool, error) {
+func (hclient *HClient) Reconnect() (bool, error) {
 
 	//重新创建物理连接
 	conn, err := net.DialTCP("tcp4", nil, hclient.conn.RemoteAddr().(*net.TCPAddr))
@@ -119,7 +119,7 @@ func (hclient *HuskyClient) Reconnect() (bool, error) {
 }
 
 //包分发
-func (hclient *HuskyClient) schedulerPackets() {
+func (hclient *HClient) schedulerPackets() {
 
 	for hclient.session != nil && !hclient.session.Closed() {
 
@@ -146,7 +146,7 @@ func (hclient *HuskyClient) schedulerPackets() {
 }
 
 //直接释放请求
-func (hclient *HuskyClient) FinishReq(seqId int32, obj interface{}) {
+func (hclient *HClient) FinishReq(seqId int32, obj interface{}) {
 	defer func() {
 		if err := recover(); nil != err {
 			log.Fatalf("release packet fail : %s - %s\n", err, obj)
@@ -158,7 +158,7 @@ func (hclient *HuskyClient) FinishReq(seqId int32, obj interface{}) {
 var ERROR_PONG = errors.New("ERROR PONG TYPE !")
 
 //同步发起ping的命令
-func (hclient *HuskyClient) Ping(heartbeat *Packet, timeout time.Duration) error {
+func (hclient *HClient) Ping(heartbeat *Packet, timeout time.Duration) error {
 	pong, err := hclient.SyncWrite(*heartbeat, timeout)
 	if nil != err {
 		return err
@@ -172,18 +172,18 @@ func (hclient *HuskyClient) Ping(heartbeat *Packet, timeout time.Duration) error
 	return nil
 }
 
-func (hclient *HuskyClient) updateHeartBeat(version int64) {
+func (hclient *HClient) updateHeartBeat(version int64) {
 	if version > hclient.heartbeat {
 		hclient.heartbeat = version
 	}
 }
 
-func (hclient *HuskyClient) Pong(seqId int32, version int64) {
+func (hclient *HClient) Pong(seqId int32, version int64) {
 	hclient.updateHeartBeat(version)
 }
 
 //填充序列号并返回
-func (hclient *HuskyClient) fillseqId(p *Packet) int32 {
+func (hclient *HClient) fillseqId(p *Packet) int32 {
 	tid := p.Header.PacketId
 	if tid < 0 {
 		id := hclient.huskyConfig.RequestHolder.CurrentSeqId()
@@ -194,7 +194,7 @@ func (hclient *HuskyClient) fillseqId(p *Packet) int32 {
 }
 
 //异步写
-func (hclient *HuskyClient) Write(p Packet) (*Future, error) {
+func (hclient *HClient) Write(p Packet) (*Future, error) {
 	pp := &p
 	seqId := hclient.fillseqId(pp)
 	future := NewFuture(seqId, hclient.localAddr)
@@ -204,7 +204,7 @@ func (hclient *HuskyClient) Write(p Packet) (*Future, error) {
 }
 
 //同步写
-func (hclient *HuskyClient) SyncWrite(p Packet, timeout time.Duration) (interface{}, error) {
+func (hclient *HClient) SyncWrite(p Packet, timeout time.Duration) (interface{}, error) {
 
 	pp := &p
 	seqId := hclient.fillseqId(pp)
@@ -221,12 +221,12 @@ func (hclient *HuskyClient) SyncWrite(p Packet, timeout time.Duration) (interfac
 
 }
 
-func (hclient *HuskyClient) IsClosed() bool {
+func (hclient *HClient) IsClosed() bool {
 	return hclient.session.Closed()
 }
 
 //客户端关闭==>断开会话
-func (hclient *HuskyClient) Shutdown() {
+func (hclient *HClient) Shutdown() {
 	hclient.session.Close()
 	log.Printf("client shutdown %s...\n", hclient.RemoteAddr())
 }

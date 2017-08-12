@@ -27,7 +27,7 @@ import (
 func main() {
 	log.Println("Start Server")
 
-	simpleServer := NewServer("localhost:10028", nil, func(remoteClient *HuskyClient, p *Packet) {
+	simpleServer := NewServer("localhost:10028", nil, func(remoteClient *HClient, p *Packet) {
 
 		if p.Header.ContentType == PB_BYTES_MESSAGE {
 			bm := &pb.BytesMessage{}

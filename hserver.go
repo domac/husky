@@ -5,29 +5,31 @@ import (
 	"golang.org/x/time/rate"
 	"log"
 	"net"
+	"runtime"
+	"strings"
 	"time"
 )
 
-type CallBackFunc func(client *HuskyClient, p *Packet)
+type CallBackFunc func(client *HClient, p *Packet)
 
-type HuskyServer struct {
+type HServer struct {
 	hostport              string
 	keepalive             time.Duration
 	isShutdown            bool
 	StopChan              chan bool
 	packetReceiveCallBack CallBackFunc
 	rc                    *HuskyConfig
-	listener              *HuskyServerListener
+	listener              *HServerListener
 	limiter               *RateLimiter
 }
 
-func NewServer(hostport string, hc *HuskyConfig, callback CallBackFunc) *HuskyServer {
+func NewServer(hostport string, hc *HuskyConfig, callback CallBackFunc) *HServer {
 
 	if hc == nil {
 		hc = NewDefaultConfig()
 	}
 
-	server := &HuskyServer{
+	server := &HServer{
 		hostport:              hostport,
 		StopChan:              make(chan bool, 1),
 		packetReceiveCallBack: callback,
@@ -39,11 +41,11 @@ func NewServer(hostport string, hc *HuskyConfig, callback CallBackFunc) *HuskySe
 }
 
 //服务限速器
-func (hs *HuskyServer) SetLimiter(limiter *RateLimiter) {
+func (hs *HServer) SetLimiter(limiter *RateLimiter) {
 	hs.limiter = limiter
 }
 
-func (hs *HuskyServer) ListenAndServer() error {
+func (hs *HServer) ListenAndServer() error {
 
 	addr, err := net.ResolveTCPAddr("tcp4", hs.hostport)
 	if nil != err {
@@ -57,14 +59,14 @@ func (hs *HuskyServer) ListenAndServer() error {
 		return err
 	}
 
-	sl := &HuskyServerListener{listener, hs.StopChan, hs.keepalive}
+	sl := &HServerListener{listener, hs.StopChan, hs.keepalive}
 	hs.listener = sl
 	log.Printf("start listening\n")
 	go hs.serve()
 	return nil
 }
 
-func (hs *HuskyServer) serve() error {
+func (hs *HServer) serve() error {
 	sl := hs.listener
 
 	for !hs.isShutdown {
@@ -89,7 +91,7 @@ func (hs *HuskyServer) serve() error {
 }
 
 //服务端关闭
-func (hs *HuskyServer) Shutdown() {
+func (hs *HServer) Shutdown() {
 	hs.isShutdown = true
 	close(hs.StopChan)
 	hs.listener.Close()
@@ -97,13 +99,13 @@ func (hs *HuskyServer) Shutdown() {
 }
 
 //服务端监听器
-type HuskyServerListener struct {
+type HServerListener struct {
 	*net.TCPListener
 	stop      chan bool
 	keepalive time.Duration
 }
 
-func (hsl *HuskyServerListener) Accept() (*net.TCPConn, error) {
+func (hsl *HServerListener) Accept() (*net.TCPConn, error) {
 	for {
 		conn, err := hsl.AcceptTCP()
 		select {
@@ -116,9 +118,16 @@ func (hsl *HuskyServerListener) Accept() (*net.TCPConn, error) {
 			conn.SetKeepAlive(true)
 			conn.SetKeepAlivePeriod(hsl.keepalive)
 		} else {
+			if nerr, ok := err.(net.Error); ok && nerr.Temporary() {
+				log.Fatalf("temporary Accept() failure - %s", err)
+				runtime.Gosched()
+				continue
+			}
+			if !strings.Contains(err.Error(), "use of closed network connection") {
+				log.Fatalf("listener.Accept() - %s", err)
+			}
 			return nil, err
 		}
-
 		return conn, err
 	}
 
