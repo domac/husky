@@ -22,6 +22,11 @@ func main() {
 	for i := 0; i < 1000; i++ {
 		p := NewPbBytesPacket(1, "democlient", []byte("husky"))
 		resp, _ := simpleClient.SyncWrite(*p, 5*time.Millisecond)
+
+		if resp == nil {
+			continue
+		}
+
 		bm := &pb.BytesMessage{}
 		UnmarshalPbMessage(resp.([]byte), bm)
 		fmt.Printf("resp >=====> %s|%s\n", string(bm.GetBody()), bm.GetHeader().GetFunctionType())

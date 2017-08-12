@@ -75,17 +75,22 @@ func (f Future) Get(timeout <-chan time.Time) (interface{}, error) {
 
 //配置信息
 type HConfig struct {
-	MaxSchedulerNum  chan int
-	ReadBufferSize   int
-	WriteBufferSize  int
-	WriteChannelSize int
-	ReadChannelSize  int
-	IdleTime         time.Duration //连接空闲时间
-	RequestHolder    *ReqHolder
+	MaxSchedulerNum   chan int
+	ReadBufferSize    int
+	WriteBufferSize   int
+	WriteChannelSize  int
+	ReadChannelSize   int
+	IdleTime          time.Duration //连接空闲时间
+	RequestHolder     *ReqHolder
+	initReqsPerSecond int //初始化速率
+	maxReqsPerSecond  int //最大速率
 }
 
-func NewConfig(maxSchedulerNum, readbuffersize, writebuffersize,
-	writechannelsize, readchannelsize int, idletime time.Duration, maxseqId int) *HConfig {
+func NewConfig(maxSchedulerNum,
+	readbuffersize, writebuffersize,
+	writechannelsize, readchannelsize int,
+	idletime time.Duration, maxseqId int,
+	initReqsPerSecond, maxReqsPerSecond int) *HConfig {
 
 	//定义holder
 	holders := make([]map[int32]*Future, 0, MAX_WORK_PROCESSES)
@@ -101,20 +106,26 @@ func NewConfig(maxSchedulerNum, readbuffersize, writebuffersize,
 		holders:  holders,
 		maxseqId: maxseqId}
 
+	if initReqsPerSecond < MAX_WORK_PROCESSES {
+		initReqsPerSecond = MAX_WORK_PROCESSES
+	}
+
 	hc := &HConfig{
-		MaxSchedulerNum:  make(chan int, maxSchedulerNum),
-		ReadBufferSize:   readbuffersize,
-		WriteBufferSize:  writebuffersize,
-		WriteChannelSize: writebuffersize,
-		ReadChannelSize:  readchannelsize,
-		IdleTime:         idletime,
-		RequestHolder:    rh,
+		MaxSchedulerNum:   make(chan int, maxSchedulerNum),
+		ReadBufferSize:    readbuffersize,
+		WriteBufferSize:   writebuffersize,
+		WriteChannelSize:  writebuffersize,
+		ReadChannelSize:   readchannelsize,
+		IdleTime:          idletime,
+		RequestHolder:     rh,
+		initReqsPerSecond: initReqsPerSecond,
+		maxReqsPerSecond:  maxReqsPerSecond,
 	}
 	return hc
 }
 
 func NewDefaultConfig() *HConfig {
-	return NewConfig(1000, 4*1024, 4*1024, 10000, 10000, 10*time.Second, 160000)
+	return NewConfig(1000, 4*1024, 4*1024, 10000, 10000, 10*time.Second, 160000, 100, -1)
 }
 
 //请求信息寄存器

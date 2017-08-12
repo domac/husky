@@ -5,10 +5,14 @@ import (
 	"github.com/domac/husky/pb"
 	"net/http"
 	_ "net/http/pprof"
+	"time"
 )
 
 func main() {
-	simpleServer := NewServer("localhost:10028", nil, func(remoteClient *HClient, p *Packet) {
+
+	cfg := NewConfig(1000, 4*1024, 4*1024, 10000, 10000, 10*time.Second, 160000, -1, -1)
+
+	simpleServer := NewServer("localhost:10028", cfg, func(remoteClient *HClient, p *Packet) {
 
 		if p.Header.ContentType == PB_BYTES_MESSAGE {
 			bm := &pb.BytesMessage{}

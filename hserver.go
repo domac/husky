@@ -42,11 +42,6 @@ func NewServer(hostport string, hc *HConfig, callback CallBackFunc) *HServer {
 	return server
 }
 
-//服务限速器
-func (hs *HServer) SetLimiter(limiter *RateLimiter) {
-	hs.limiter = limiter
-}
-
 func (hs *HServer) ListenAndServer() error {
 
 	addr, err := net.ResolveTCPAddr("tcp4", hs.hostport)
@@ -84,7 +79,7 @@ func (hs *HServer) serve() error {
 			log.Fatalf("Server serve accept fail %s\n", err)
 			continue
 		} else {
-			remoteClient := NewClient(conn, hs.packetReceiveCallBack, hs.rc)
+			remoteClient := NewClient(conn, hs.rc, hs.packetReceiveCallBack)
 			remoteClient.Start()
 
 		}
