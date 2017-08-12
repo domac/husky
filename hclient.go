@@ -15,14 +15,14 @@ type HClient struct {
 	localAddr             string
 	remoteAddr            string
 	heartbeat             int64
-	session               *HuskySession
+	session               *HSession
 	packetReceiveCallBack func(client *HClient, p *Packet)
-	huskyConfig           *HuskyConfig
+	hConfig               *HConfig
 	AttachChannel         chan interface{} //用于处理统一个连接上返回信息
 }
 
 func NewClient(conn *net.TCPConn, packetReceiveCallBack func(remoteClient *HClient, p *Packet),
-	hc *HuskyConfig) *HClient {
+	hc *HConfig) *HClient {
 
 	//省缺配置
 	if hc == nil {
@@ -36,13 +36,13 @@ func NewClient(conn *net.TCPConn, packetReceiveCallBack func(remoteClient *HClie
 	}
 
 	//会话状态
-	remoteSession := NewHuskySession(conn, hc)
+	remoteSession := NewHSession(conn, hc)
 
 	Client := &HClient{
 		heartbeat:             0,
 		conn:                  conn,
 		session:               remoteSession,
-		huskyConfig:           hc,
+		hConfig:               hc,
 		packetReceiveCallBack: packetReceiveCallBack,
 		AttachChannel:         make(chan interface{}, 100),
 	}
@@ -61,7 +61,7 @@ func (hclient *HClient) Idle() bool {
 	return hclient.session.Idle()
 }
 
-func (hclient *HClient) GetSession() *HuskySession {
+func (hclient *HClient) GetSession() *HSession {
 	return hclient.session
 }
 
@@ -109,7 +109,7 @@ func (hclient *HClient) Reconnect() (bool, error) {
 	//重新设置conn
 	hclient.conn = conn
 	//创建session
-	hclient.session = NewHuskySession(hclient.conn, hclient.huskyConfig)
+	hclient.session = NewHSession(hclient.conn, hclient.hConfig)
 	//create an new channel
 	hclient.AttachChannel = make(chan interface{}, 100)
 
@@ -128,11 +128,11 @@ func (hclient *HClient) schedulerPackets() {
 			continue
 		}
 
-		hclient.huskyConfig.MaxSchedulerNum <- 1
+		hclient.hConfig.MaxSchedulerNum <- 1
 
 		go func() {
 			defer func() {
-				<-hclient.huskyConfig.MaxSchedulerNum
+				<-hclient.hConfig.MaxSchedulerNum
 			}()
 			//调用自定义的包消息处理函数
 
@@ -152,7 +152,7 @@ func (hclient *HClient) FinishReq(seqId int32, obj interface{}) {
 			log.Fatalf("release packet fail : %s - %s\n", err, obj)
 		}
 	}()
-	hclient.huskyConfig.RequestHolder.ReleaseFuture(seqId, obj)
+	hclient.hConfig.RequestHolder.ReleaseFuture(seqId, obj)
 }
 
 var ERROR_PONG = errors.New("ERROR PONG TYPE !")
@@ -186,7 +186,7 @@ func (hclient *HClient) Pong(seqId int32, version int64) {
 func (hclient *HClient) fillseqId(p *Packet) int32 {
 	tid := p.Header.PacketId
 	if tid < 0 {
-		id := hclient.huskyConfig.RequestHolder.CurrentSeqId()
+		id := hclient.hConfig.RequestHolder.CurrentSeqId()
 		p.Header.PacketId = id
 		tid = id
 	}
@@ -198,7 +198,7 @@ func (hclient *HClient) Write(p Packet) (*Future, error) {
 	pp := &p
 	seqId := hclient.fillseqId(pp)
 	future := NewFuture(seqId, hclient.localAddr)
-	hclient.huskyConfig.RequestHolder.AddFuture(seqId, future)
+	hclient.hConfig.RequestHolder.AddFuture(seqId, future)
 	return future, hclient.session.Write(pp)
 
 }
@@ -209,7 +209,7 @@ func (hclient *HClient) SyncWrite(p Packet, timeout time.Duration) (interface{},
 	pp := &p
 	seqId := hclient.fillseqId(pp)
 	future := NewFuture(seqId, hclient.localAddr)
-	hclient.huskyConfig.RequestHolder.AddFuture(seqId, future)
+	hclient.hConfig.RequestHolder.AddFuture(seqId, future)
 	err := hclient.session.Write(pp)
 	// //同步写出
 	if nil != err {
@@ -228,7 +228,7 @@ func (hclient *HClient) IsClosed() bool {
 //客户端关闭==>断开会话
 func (hclient *HClient) Shutdown() {
 	hclient.session.Close()
-	log.Printf("client shutdown %s...\n", hclient.RemoteAddr())
+	log.Printf("client (%s) shutdown!\n", hclient.RemoteAddr())
 }
 
 //创建物理连接

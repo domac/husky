@@ -74,7 +74,7 @@ func (f Future) Get(timeout <-chan time.Time) (interface{}, error) {
 }
 
 //配置信息
-type HuskyConfig struct {
+type HConfig struct {
 	MaxSchedulerNum  chan int
 	ReadBufferSize   int
 	WriteBufferSize  int
@@ -85,7 +85,7 @@ type HuskyConfig struct {
 }
 
 func NewConfig(maxSchedulerNum, readbuffersize, writebuffersize,
-	writechannelsize, readchannelsize int, idletime time.Duration, maxseqId int) *HuskyConfig {
+	writechannelsize, readchannelsize int, idletime time.Duration, maxseqId int) *HConfig {
 
 	//定义holder
 	holders := make([]map[int32]*Future, 0, MAX_WORK_PROCESSES)
@@ -101,7 +101,7 @@ func NewConfig(maxSchedulerNum, readbuffersize, writebuffersize,
 		holders:  holders,
 		maxseqId: maxseqId}
 
-	hc := &HuskyConfig{
+	hc := &HConfig{
 		MaxSchedulerNum:  make(chan int, maxSchedulerNum),
 		ReadBufferSize:   readbuffersize,
 		WriteBufferSize:  writebuffersize,
@@ -113,7 +113,7 @@ func NewConfig(maxSchedulerNum, readbuffersize, writebuffersize,
 	return hc
 }
 
-func NewDefaultConfig() *HuskyConfig {
+func NewDefaultConfig() *HConfig {
 	return NewConfig(1000, 4*1024, 4*1024, 10000, 10000, 10*time.Second, 160000)
 }
 

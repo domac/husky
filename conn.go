@@ -16,7 +16,7 @@ import (
 var globalSessionId uint64
 
 //conn的功能封装层
-type HuskySession struct {
+type HSession struct {
 	id           uint64
 	conn         *net.TCPConn //物理连接
 	remoteAddr   string
@@ -27,12 +27,12 @@ type HuskySession struct {
 	closeFlag    int32
 	closeMutex   sync.Mutex
 	lasttime     time.Time //上次会话工作时间
-	hc           *HuskyConfig
-	codec        *HuskyCodec
+	hc           *HConfig
+	codec        *HCodec
 }
 
 //创建会话连接
-func NewHuskySession(conn *net.TCPConn, hc *HuskyConfig) *HuskySession {
+func NewHSession(conn *net.TCPConn, hc *HConfig) *HSession {
 
 	//物理连接调优
 	conn.SetKeepAlive(true)
@@ -42,7 +42,7 @@ func NewHuskySession(conn *net.TCPConn, hc *HuskyConfig) *HuskySession {
 	conn.SetWriteBuffer(hc.WriteBufferSize)
 
 	//session是连接的处理层,husky传输的交互通过session处理
-	session := &HuskySession{
+	session := &HSession{
 		id:           atomic.AddUint64(&globalSessionId, 1),
 		conn:         conn,
 		buffreader:   bufio.NewReaderSize(conn, hc.ReadBufferSize),
@@ -50,30 +50,30 @@ func NewHuskySession(conn *net.TCPConn, hc *HuskyConfig) *HuskySession {
 		ReadChannel:  make(chan *Packet, hc.ReadChannelSize),
 		WriteChannel: make(chan *Packet, hc.WriteChannelSize),
 		remoteAddr:   conn.RemoteAddr().String(),
-		codec:        &HuskyCodec{MAX_BYTES},
+		codec:        &HCodec{MAX_BYTES},
 		hc:           hc,
 	}
 	return session
 }
 
-func (session *HuskySession) ID() uint64 {
+func (session *HSession) ID() uint64 {
 	return session.id
 }
 
-func (session *HuskySession) RemotingAddr() string {
+func (session *HSession) RemotingAddr() string {
 	return session.remoteAddr
 }
 
-func (session *HuskySession) Idle() bool {
+func (session *HSession) Idle() bool {
 	return time.Now().After(session.lasttime.Add(session.hc.IdleTime))
 }
 
-func (session *HuskySession) Closed() bool {
+func (session *HSession) Closed() bool {
 	return atomic.LoadInt32(&session.closeFlag) == 1
 }
 
 //数据包读取
-func (session *HuskySession) ReadPacket() {
+func (session *HSession) ReadPacket() {
 
 	for session != nil && !session.Closed() {
 		//由于有for, 所以有defer的情况,最后用匿名函数包起来
@@ -106,7 +106,7 @@ func (session *HuskySession) ReadPacket() {
 }
 
 //写出数据
-func (session *HuskySession) Write(p *Packet) error {
+func (session *HSession) Write(p *Packet) error {
 
 	if session != nil && !session.Closed() {
 		select {
@@ -120,7 +120,7 @@ func (session *HuskySession) Write(p *Packet) error {
 }
 
 //数据包发送
-func (session *HuskySession) WritePackets() {
+func (session *HSession) WritePackets() {
 
 	//批量bulk
 	packets := make([]*Packet, 0, 100)
@@ -159,7 +159,7 @@ func (session *HuskySession) WritePackets() {
 }
 
 //批量写入到网络流
-func (session *HuskySession) writeBulk(tlv []*Packet) {
+func (session *HSession) writeBulk(tlv []*Packet) {
 	batch := make([]byte, 0, len(tlv)*128)
 	for _, t := range tlv {
 		p := session.codec.MarshalPacket(t)
@@ -201,7 +201,7 @@ func (session *HuskySession) writeBulk(tlv []*Packet) {
 }
 
 //会话关闭
-func (session *HuskySession) Close() error {
+func (session *HSession) Close() error {
 	if atomic.CompareAndSwapInt32(&session.closeFlag, 0, 1) {
 		session.buffwriter.Flush()
 		session.conn.Close()

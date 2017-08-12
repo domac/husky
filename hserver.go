@@ -18,12 +18,12 @@ type HServer struct {
 	isShutdown            bool
 	StopChan              chan bool
 	packetReceiveCallBack CallBackFunc
-	rc                    *HuskyConfig
+	rc                    *HConfig
 	listener              *HServerListener
 	limiter               *RateLimiter
 }
 
-func NewServer(hostport string, hc *HuskyConfig, callback CallBackFunc) *HServer {
+func NewServer(hostport string, hc *HConfig, callback CallBackFunc) *HServer {
 
 	if hc == nil {
 		hc = NewDefaultConfig()

@@ -8,23 +8,24 @@ import (
 )
 
 //Husky的解码器
-type HuskyCodec struct {
+type HCodec struct {
 	MaxLength int32 //传输包的最大幅度
 }
 
-func (hcc *HuskyCodec) Read(reader *bufio.Reader) (*bytes.Buffer, error) {
+//基于长度读入
+func (hcc *HCodec) Read(reader *bufio.Reader) (*bytes.Buffer, error) {
 	//总长度
 	var length int32
 	err := Read(reader, BIG_BYTE_ORDER, &length)
 	if nil != err {
 		return nil, err
 	} else if length <= 0 {
-		return nil, errors.New("TOO SHORT PACKET")
+		return nil, errors.New("too small packet size")
 	}
 
 	//总长度校验
 	if length > hcc.MaxLength {
-		return nil, errors.New("TOO LARGE PACKET")
+		return nil, errors.New("too large packet size")
 	}
 
 	buff := make([]byte, int(length))
@@ -48,12 +49,12 @@ func (hcc *HuskyCodec) Read(reader *bufio.Reader) (*bytes.Buffer, error) {
 }
 
 //序列化
-func (hcc *HuskyCodec) MarshalPacket(p *Packet) []byte {
+func (hcc *HCodec) MarshalPacket(p *Packet) []byte {
 	return p.MarshalPacket()
 }
 
 //反序列化
-func (hcc *HuskyCodec) UnmarshalPacket(buff *bytes.Buffer) (*Packet, error) {
+func (hcc *HCodec) UnmarshalPacket(buff *bytes.Buffer) (*Packet, error) {
 	p := &Packet{}
 
 	if buff.Len() < PACKET_HEADER_LENGTH {
