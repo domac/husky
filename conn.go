@@ -13,11 +13,9 @@ import (
 	"time"
 )
 
-var globalSessionId uint64
-
 //conn的功能封装层
 type HSession struct {
-	id           uint64
+	id           int64
 	conn         *net.TCPConn //物理连接
 	remoteAddr   string
 	buffreader   *bufio.Reader //读缓冲层
@@ -41,9 +39,11 @@ func NewHSession(conn *net.TCPConn, hc *HConfig) *HSession {
 	conn.SetReadBuffer(hc.ReadBufferSize)
 	conn.SetWriteBuffer(hc.WriteBufferSize)
 
+	sessionId, _ := NewGUIDFactory(0).NewGUID() //生成唯一的sessionID
+
 	//session是连接的处理层,husky传输的交互通过session处理
 	session := &HSession{
-		id:           atomic.AddUint64(&globalSessionId, 1),
+		id:           int64(sessionId),
 		conn:         conn,
 		buffreader:   bufio.NewReaderSize(conn, hc.ReadBufferSize),
 		buffwriter:   bufio.NewWriterSize(conn, hc.WriteBufferSize),
@@ -56,7 +56,7 @@ func NewHSession(conn *net.TCPConn, hc *HConfig) *HSession {
 	return session
 }
 
-func (session *HSession) ID() uint64 {
+func (session *HSession) ID() int64 {
 	return session.id
 }
 
@@ -149,7 +149,7 @@ func (session *HSession) WritePackets() {
 		}
 	}
 
-	//drain channel now
+	//榨干剩下的数据包
 	for {
 		_, ok := <-session.WriteChannel
 		if !ok {
@@ -207,7 +207,7 @@ func (session *HSession) Close() error {
 		session.conn.Close()
 		close(session.WriteChannel)
 		close(session.ReadChannel)
-		log.Printf("session was closed : %s!\n", session.remoteAddr)
+		log.Printf("client (%s) was closed | sessionid-> %d \n", session.remoteAddr, session.ID())
 	}
 	return nil
 }

@@ -93,7 +93,7 @@ func (hclient *HClient) Start() {
 	//启动读取
 	go hclient.session.ReadPacket()
 
-	log.Printf("client (%s) connect success ! \n", hclient.RemoteAddr())
+	log.Printf("client (%s) connect success | sessionid-> %d \n", hclient.RemoteAddr(), hclient.GetSession().id)
 }
 
 //重连

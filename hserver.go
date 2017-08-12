@@ -12,6 +12,8 @@ import (
 
 type CallBackFunc func(client *HClient, p *Packet)
 
+var GuidFactory *guidFactory
+
 type HServer struct {
 	hostport              string
 	keepalive             time.Duration
