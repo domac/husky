@@ -10,7 +10,8 @@ import (
 
 func main() {
 
-	cfg := NewConfig(1000, 4*1024, 4*1024, 10000, 10000, 10*time.Second, 160000, -1, -1)
+	rateLimitNum := 5000 //限流速率
+	cfg := NewConfig(1000, 4*1024, 4*1024, 10000, 10000, 10*time.Second, 160000, -1, rateLimitNum)
 
 	simpleServer := NewServer("localhost:10028", cfg, func(remoteClient *HClient, p *Packet) {
 
