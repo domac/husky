@@ -27,6 +27,7 @@ type HSession struct {
 	lasttime     time.Time //上次会话工作时间
 	hc           *HConfig
 	codec        *HCodec
+	limiter      *RateLimiter //限流阀
 }
 
 //创建会话连接
@@ -76,6 +77,16 @@ func (session *HSession) Closed() bool {
 func (session *HSession) ReadPacket() {
 
 	for session != nil && !session.Closed() {
+
+		//限流功能
+		if session.limiter != nil {
+			ok := session.limiter.GetQuota()
+			if !ok {
+				log.Printf("reject packet, current quota :%d", session.limiter.QuotaPerSecond())
+				continue
+			}
+		}
+
 		//由于有for, 所以有defer的情况,最后用匿名函数包起来
 		func() {
 

@@ -19,7 +19,6 @@ type HClient struct {
 	packetReceiveCallBack func(client *HClient, p *Packet)
 	hConfig               *HConfig
 	AttachChannel         chan interface{} //用于处理统一个连接上返回信息
-	limiter               *RateLimiter     //限流阀
 }
 
 func NewClient(conn *net.TCPConn, hc *HConfig,
@@ -50,7 +49,7 @@ func NewClient(conn *net.TCPConn, hc *HConfig,
 
 	//设置限流阀
 	if hc.maxReqsPerSecond > 0 {
-		client.limiter = NewRateLimiter(hc.initReqsPerSecond, hc.maxReqsPerSecond)
+		client.session.limiter = NewRateLimiter(hc.initReqsPerSecond, hc.maxReqsPerSecond)
 	}
 
 	return client
@@ -129,15 +128,6 @@ func (hclient *HClient) Reconnect() (bool, error) {
 func (hclient *HClient) schedulerPackets() {
 
 	for hclient.session != nil && !hclient.session.Closed() {
-
-		//限流功能
-		if hclient.limiter != nil {
-			ok := hclient.limiter.GetQuota()
-			if !ok {
-				log.Printf("reject packet, current quota :%d", hclient.limiter.QuotaPerSecond())
-				continue
-			}
-		}
 
 		p := <-hclient.session.ReadChannel
 		if p == nil {
