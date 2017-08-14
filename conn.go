@@ -78,15 +78,6 @@ func (session *HSession) ReadPacket() {
 
 	for session != nil && !session.Closed() {
 
-		//限流功能
-		if session.limiter != nil {
-			ok := session.limiter.GetQuota()
-			if !ok {
-				log.Printf("reject packet, current quota :%d", session.limiter.QuotaPerSecond())
-				continue
-			}
-		}
-
 		//由于有for, 所以有defer的情况,最后用匿名函数包起来
 		func() {
 
@@ -101,6 +92,15 @@ func (session *HSession) ReadPacket() {
 			if err != nil {
 				session.Close()
 				return
+			}
+
+			//限流功能
+			if session.limiter != nil {
+				ok := session.limiter.GetQuota()
+				if !ok {
+					log.Printf("reject packet, current quota :%d", session.limiter.QuotaPerSecond())
+					return
+				}
 			}
 
 			//通过译码器解码
