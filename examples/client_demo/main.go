@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	. "github.com/domac/husky"
 	"github.com/domac/husky/pb"
@@ -11,13 +10,10 @@ import (
 
 func main() {
 	conn, _ := Dial("localhost:10028")
-	simpleClient := NewClient(conn, nil, nil)
+	cfg := NewConfig(1000, 4*1024, 4*1024, 10000, 10000, 5*time.Second, 160000, -1, 1000)
+	simpleClient := NewClient(conn, cfg, nil)
 
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	simpleClient.StartWithContext(ctx)
+	simpleClient.Start()
 
 	for i := 0; i < 1000; i++ {
 		p := NewPbBytesPacket(1, "democlient", []byte("husky"))
@@ -40,7 +36,38 @@ func main() {
 		}
 	}
 
-	<-ctx.Done()
+	simpleClient.Shutdown()
+
+	p := NewPacket([]byte("123"))
+	_, err := simpleClient.SyncWrite(*p, 1*time.Second)
+	if err != nil {
+		println(err.Error())
+	}
+
+	if simpleClient.IsClosed() {
+		println("======== simpleClient is closed")
+		b, err := simpleClient.Reconnect()
+		if err != nil {
+			println("Reconnect error")
+			return
+		}
+
+		if !b {
+			println("Reconnect fail")
+			return
+		} else {
+			println("======== Reconnect success")
+
+			for j := 0; j < 5; j++ {
+				p := NewPacket([]byte("123"))
+				resp, _ := simpleClient.SyncWrite(*p, 15*time.Millisecond)
+				if resp != nil {
+					fmt.Printf(">>>>>> %v\n", string(resp.([]byte)))
+				}
+			}
+		}
+	}
+
 	println("client Down !!")
-	cancel()
+	select {}
 }
