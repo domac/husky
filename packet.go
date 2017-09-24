@@ -11,7 +11,7 @@ import (
 
 const (
 	PACKET_HEADER_LENGTH = (4 + 1 + 2 + 4)
-	MAX_BYTES            = 32 * 1024
+	MAX_BYTES            = 512 * 1024 //最大512K
 
 	//message
 	NORMAL_MESSAGE    = uint8(0x01) //普通类型
