@@ -10,7 +10,7 @@ import (
 
 func main() {
 	conn, _ := Dial("localhost:10028")
-	cfg := NewConfig(1000, 4*1024, 4*1024, 10000, 10000, 5*time.Second, 160000, -1, 1000)
+	cfg := NewConfig(1000, 4*1024, 4*1024, 10000, 10000, 5*time.Second, 160000, -1, 1000, 0)
 	simpleClient := NewClient(conn, cfg, nil)
 
 	simpleClient.Start()

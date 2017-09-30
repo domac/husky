@@ -9,6 +9,8 @@ import (
 //最大工作并发数
 const MAX_WORK_PROCESSES = 8
 
+const DEFAULT_MAX_BYTES = 32 * 1024 //最大32K
+
 //超时错误
 var TIMEOUT_ERROR = errors.New("RESP WAIT TIMEOUT")
 
@@ -84,13 +86,14 @@ type HConfig struct {
 	RequestHolder     *ReqHolder
 	initReqsPerSecond int //初始化速率
 	maxReqsPerSecond  int //最大速率
+	MaxSendBytes      int
 }
 
 func NewConfig(maxSchedulerNum,
 	readbuffersize, writebuffersize,
 	writechannelsize, readchannelsize int,
 	idletime time.Duration, maxseqId int,
-	initReqsPerSecond, maxReqsPerSecond int) *HConfig {
+	initReqsPerSecond, maxReqsPerSecond, maxSendBytes int) *HConfig {
 
 	//定义holder
 	holders := make([]map[int32]*Future, 0, MAX_WORK_PROCESSES)
@@ -110,6 +113,10 @@ func NewConfig(maxSchedulerNum,
 		initReqsPerSecond = MAX_WORK_PROCESSES
 	}
 
+	if maxSendBytes < DEFAULT_MAX_BYTES {
+		maxSendBytes = DEFAULT_MAX_BYTES
+	}
+
 	hc := &HConfig{
 		MaxSchedulerNum:   make(chan int, maxSchedulerNum),
 		ReadBufferSize:    readbuffersize,
@@ -120,12 +127,13 @@ func NewConfig(maxSchedulerNum,
 		RequestHolder:     rh,
 		initReqsPerSecond: initReqsPerSecond,
 		maxReqsPerSecond:  maxReqsPerSecond,
+		MaxSendBytes:      maxSendBytes,
 	}
 	return hc
 }
 
 func NewDefaultConfig() *HConfig {
-	return NewConfig(1000, 4*1024, 4*1024, 10000, 10000, 10*time.Second, 160000, 100, -1)
+	return NewConfig(1000, 4*1024, 4*1024, 10000, 10000, 10*time.Second, 160000, 100, -1, 0)
 }
 
 //请求信息寄存器

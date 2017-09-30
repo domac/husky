@@ -51,7 +51,7 @@ func NewHSession(conn *net.TCPConn, hc *HConfig) *HSession {
 		ReadChannel:  make(chan *Packet, hc.ReadChannelSize),
 		WriteChannel: make(chan *Packet, hc.WriteChannelSize),
 		remoteAddr:   conn.RemoteAddr().String(),
-		codec:        &HCodec{MAX_BYTES},
+		codec:        &HCodec{int32(hc.MaxSendBytes)},
 		hc:           hc,
 	}
 	return session
